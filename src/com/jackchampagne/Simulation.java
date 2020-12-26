@@ -6,6 +6,8 @@ import java.util.ArrayList;
 
 public class Simulation extends JPanel implements Runnable {
 
+    public static enum INTEGRATOR {EULER, SYMPLECTIC, LEAPFROG}
+
     public JFrame myFrame = new JFrame();
     private JCheckBox velocityVectorsCheckbox;
     private JCheckBox forceVectorsCheckbox;
@@ -21,9 +23,9 @@ public class Simulation extends JPanel implements Runnable {
         //planets.add(new Planet(120, 400, 400, -5, -2));
         //planets.add(new Planet(100, 100, 100, 2, 2));
         //planets.add(new Planet(120, 200, 200, 4, 4));
-        planets.add(new Planet(20, 210, 210, -210, 210));
-        planets.add(new Planet(500, 200, 200, -80, 80));
-        planets.add(new Planet(5000, 400, 400, 8, -8));
+        //planets.add(new Planet(20, 210, 210, -310, 310));
+        planets.add(new Planet(500, 200, 200, -400, 400));
+        planets.add(new Planet(5000, 400, 400, 80, -80));
         initFrame();
     }
 
@@ -32,11 +34,11 @@ public class Simulation extends JPanel implements Runnable {
         forceVectorsCheckbox = new JCheckBox("Force Vectors");
         JLabel timeSliderLabel = new JLabel("Time Warp: ");
         timeWarpSlider = new JSlider(-100, 100);    // Creates a slider with a minimum of -100 and a maximum of 100 but corresponds with -1x and 1x speed
-        timeWarpSlider.setValue(10);
+        timeWarpSlider.setValue(1);
 
         JLabel gSliderLabel = new JLabel("G: ");
         gSlider = new JSlider(0, 10000);    // Creates a slider with a minimum of 0 and a maximum of 10000 for G
-        gSlider.setValue(1000);
+        gSlider.setValue(7500);
 
         JPanel uiPanel = new JPanel();
         uiPanel.setLayout(new FlowLayout());
@@ -58,13 +60,16 @@ public class Simulation extends JPanel implements Runnable {
         myFrame.add(uiPanel, BorderLayout.NORTH);
         myFrame.setLocationRelativeTo(null);
         myFrame.setVisible(true);
+
+        uiPanel.invalidate();
     }
 
+    // TODO: Rewrite
     public void paintComponent(Graphics g) {
-        g.setColor(Color.black);
+        g.setColor(Color.white);
         g.fillRect(0,0, WIDTH, HEIGHT);
         for (Planet planet : planets) {
-            g.setColor(Color.white);
+            g.setColor(Color.black);
             g.fillOval((int) planet.x - planet.size / 2, (int) planet.y - planet.size / 2, planet.size, planet.size);
 
             if (velocityVectorsCheckbox.isSelected()) {
@@ -75,6 +80,16 @@ public class Simulation extends JPanel implements Runnable {
                 g.setColor(Color.cyan);
                 g.drawLine((int) planet.x, (int) planet.y, (int) (planet.x + planet.ax * 0.1), (int) (planet.y + planet.ay * 0.1));
             }
+
+            if (planet.mass == 500) {
+                double ge = -(1000 * 5000 * 500)/Math.sqrt((planet.x - 400) * (planet.x - 400) + (planet.y - 400) * (planet.y - 400));
+                double ve = (1.0/2.0) * 500 * (planet.dx * planet.dx + planet.dy * planet.dy);
+                g.setColor(Color.red);
+                g.drawString(((Double)ve).toString(), 500, 40);
+                g.drawString(((Double)ge).toString(), 500, 60);
+
+                g.drawString(((Double)(ve + ge)).toString(), 500, 90);
+            }
         }
     }
 
@@ -83,6 +98,8 @@ public class Simulation extends JPanel implements Runnable {
     private long lastUpdate = System.currentTimeMillis();
     private long now;
     public void run() {
+        Planet.setIntegrator(Simulation.INTEGRATOR.LEAPFROG);
+
         while (true) {
             now = System.currentTimeMillis();
             if (now - lastUpdate > MILLIS_DELAY) {
@@ -97,11 +114,9 @@ public class Simulation extends JPanel implements Runnable {
     public void tick() {
         for (Planet planet : planets) {
             double dTime = (timeWarpSlider.getValue() / 100.0) * (now - lastUpdate) / 1000.0;
-            planet.applyKinematics(dTime);
-            planet.calcAccel(dTime);
+            planet.update((timeWarpSlider.getValue() / 100.0) * ((double)MILLIS_DELAY / 1000.0));
         }
 
-        // Update G from g Slider
         Planet.G = gSlider.getValue();
     }
 
@@ -109,5 +124,7 @@ public class Simulation extends JPanel implements Runnable {
         Simulation mySim = new Simulation();
         Thread simThread = new Thread(mySim);
         simThread.start();
+
+
     }
 }

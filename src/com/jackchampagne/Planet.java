@@ -28,25 +28,77 @@ public class Planet {
         }
     }
 
-    public void applyKinematics(double dT) {
+    private static Simulation.INTEGRATOR integrator = Simulation.INTEGRATOR.EULER; // Defaults to euler's method
+
+    public static void setIntegrator(Simulation.INTEGRATOR newIntegrator) {
+        integrator = newIntegrator;
+    }
+
+    public void update(double dTime) {
+        switch(integrator) {
+            case EULER:
+                eulerStep(dTime);
+                break;
+            case SYMPLECTIC:
+                symplecticStep(dTime);
+                break;
+            default:
+            case LEAPFROG:
+                leapfrogStep(dTime);
+                break;
+        }
+    }
+
+    // The eulerStep method uses the forwards euler method of approximating differential equation to update the locations of the planets.
+    private void eulerStep(double dTime){
+    }
+
+    // The symplecticStep uses a simplectic method of integrating to approximate orbits and their energy conserving nature
+    private void symplecticStep(double dTime) {
+    }
+
+    // The leapfrogStep uses leapfrog integration in order to approximate orbits and their energy conserving nature
+    private boolean updatePos = true;
+    private void leapfrogStep(double dTime) {
+        if (updatePos) {
+            this.dPos(dTime);
+            updatePos = false;
+        } else {
+            this.dVel(dTime);
+            updatePos = true;
+        }
+    }
+
+    public void dPos(double dT) {
+        if (this.mass >= 4000) {
+            return;
+        }
+
         this.x += dx * dT;
         this.y += dy * dT;
     }
 
-    double r;
-    public void calcAccel(double dT) {
-        this.ax = 0;
-        this.ay = 0;
+    private void dVel(double dT) {
+        calcAccelByForces();
+
+        this.dx += this.ax * dT;
+        this.dy += this.ay * dT;
+    }
+
+    private double r;
+    public void calcAccelByForces() {
+        double nextax = 0;
+        double nextay = 0;
         for (Planet planet : Simulation.planets){
             if (planet != this) {
                 r = distance(this.x, this.y, planet.x, planet.y);
                 // Calculate force
-                this.ax +=  G * planet.mass * (planet.x - this.x) / Math.pow(r, 3);
-                this.ay +=  G * planet.mass * (planet.y - this.y) / Math.pow(r, 3);
+                nextax +=  (G/100.0) * planet.mass * (planet.x - this.x) / Math.pow(r, 2);
+                nextay +=  (G/100.0) * planet.mass * (planet.y - this.y) / Math.pow(r, 2);
             }
         }
-        this.dx += ax * dT;
-        this.dy += ay * dT;
+        this.ax = nextax;
+        this.ay = nextay;
     }
 
     public static double distance(double x1, double y1, double x2, double y2) {
